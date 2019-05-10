@@ -212,4 +212,54 @@ describe Sentimental do
       expect(analyzer.score("I really really love ruby")).to be > analyzer.score("I really love ruby")
     end
   end
+
+  describe 'exclude' do
+    let(:text) { 'Do you love ruby?' }
+    subject do
+      Sentimental.new(
+        word_scores: { 'love' => 0.925, 'do' => -0.375 },
+        exclude: exclude
+      )
+    end
+
+    context 'string filter excludes one word' do
+      let(:exclude) { 'do' }
+
+      it 'updates scores regarding to exclude' do
+        expect(subject.score(text)).to eq(0.925)
+      end
+    end
+
+    context 'string filter excludes multiple words' do
+      let(:exclude) { 'do love' }
+
+      it 'updates scores regarding to exclude' do
+        expect(subject.score(text)).to eq(0)
+      end
+    end
+
+    context 'array filter excludes words' do
+      let(:exclude) { ['do', 'love'] }
+
+      it 'updates scores regarding to exclude' do
+        expect(subject.score(text)).to eq(0)
+      end
+    end
+
+    context 'regex filter excludes' do
+      let(:exclude) { /love/i }
+
+      it 'updates scores regarding to exclude' do
+        expect(subject.score(text)).to eq(-0.375)
+      end
+    end
+
+    context 'lambda filter excludes words' do
+      let(:exclude) { ->(w) { w == 'do' } }
+
+      it 'updates scores regarding to exclude' do
+        expect(subject.score(text)).to eq(0.925)
+      end
+    end
+  end
 end

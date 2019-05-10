@@ -84,6 +84,57 @@ The dictionary must have this format:
     -2.0 no
     0.0 meh
 
+## Excluding words from the analysis
+
+You can exclude anything you want from the string you want to analyse by passing in an `exclude` keyword. The `exclude` keyword accepts a variety of filters.
+
+1. A string of space-delimited list of candidates. 
+2. An array of string candidates. For example: `['do', 'love']`.
+3. A regular expression.
+4. A lambda.
+
+#### Using a string
+```ruby
+Sentimental.new(
+  word_scores: { 'love' => 0.925, 'do' => -0.375 },
+  exclude: 'do'
+).score('Do you love ruby?')
+#=> 0.925
+
+Sentimental.new(
+  word_scores: { 'love' => 0.925, 'do' => -0.375 },
+  exclude: 'do love'
+).score('Do you love ruby?')
+#=> 0.0
+```
+
+#### Using an array
+```ruby
+Sentimental.new(
+  word_scores: { 'love' => 0.925, 'do' => -0.375 },
+  exclude: ['do', 'love']
+).score('Do you love ruby?')
+#=> 0.0
+```
+
+#### Using a regular expression
+```ruby
+Sentimental.new(
+  word_scores: { 'love' => 0.925, 'do' => -0.375 },
+  exclude: /love/i 
+).score('Do you love ruby?')
+#=> -0.375 
+```
+
+#### Using a lambda
+```ruby
+Sentimental.new(
+  word_scores: { 'love' => 0.925, 'do' => -0.375 },
+  exclude: ->(w) { w == 'do' }
+).score('Do you love ruby?')
+#=> 0.925 
+```
+
 ## Installation
 
     gem install sentimental

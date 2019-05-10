@@ -3,9 +3,9 @@ require_relative 'file_reader'
 class Sentimental
   include FileReader
 
-  attr_accessor :threshold, :word_scores, :neutral_regexps, :ngrams, :influencers
+  attr_accessor :threshold, :word_scores, :neutral_regexps, :ngrams, :influencers, :exclude
 
-  def initialize(threshold: 0, word_scores: nil, neutral_regexps: [], ngrams: 1, influencers: nil)
+  def initialize(threshold: 0, word_scores: nil, neutral_regexps: [], ngrams: 1, influencers: nil, exclude: nil)
     @ngrams = ngrams.to_i.abs if ngrams.to_i >= 1
     @word_scores = word_scores || {}
     @influencers = influencers || {}
@@ -13,6 +13,7 @@ class Sentimental
     @influencers.default = 0.0
     @threshold = threshold
     @neutral_regexps = neutral_regexps
+    @exclude = filter_proc(exclude)
   end
 
   def score(string)
@@ -20,7 +21,8 @@ class Sentimental
 
     initial_scoring = {score: 0, current_influencer: 1.0}
 
-    extract_words_with_n_grams(string).inject(initial_scoring) do |current_scoring, word|
+    words_excluded = extract_words_with_n_grams(string).reject { |word| exclude.call(word) }
+    words_excluded.inject(initial_scoring) do |current_scoring, word|
       process_word(current_scoring, word)
     end[:score]
   end
@@ -98,5 +100,25 @@ class Sentimental
 
   def influence_score
     @total_score < 0.0 ? -@influence : +@influence
+  end
+
+  def filter_proc(filter)
+    if filter.respond_to?(:to_a)
+      filter_procs = Array(filter).map(&method(:filter_proc))
+      ->(word) {
+        filter_procs.any? { |p| p.call(word) }
+      }
+    elsif filter.respond_to?(:to_str)
+      exclusion_list = filter.split.collect(&:downcase)
+      ->(word) {
+        exclusion_list.include?(word)
+      }
+    elsif regexp_filter = Regexp.try_convert(filter)
+      Proc.new { |word| word =~ regexp_filter }
+    elsif filter.respond_to?(:to_proc)
+      filter.to_proc
+    else
+      raise ArgumentError, "Filter must String, Array, Lambda, or a Regexp"
+    end
   end
 end
